@@ -26,6 +26,7 @@ class WakeService : Service() {
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var sensorManager: SensorManager
+    private lateinit var powerManager: PowerManager
 
     val listener = object : SensorEventListener {
         override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
@@ -35,10 +36,15 @@ class WakeService : Service() {
     val handler = Handler(Looper.getMainLooper())
     val stopAction = Runnable { stopCounter() }
 
+    lateinit var wakeLock: PowerManager.WakeLock
+
 
     override fun onCreate() {
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wake lock TAG")
 
         super.onCreate()
     }
@@ -75,6 +81,7 @@ class WakeService : Service() {
         startNotification(Date().time + (duration * 1000))
         startWake()
         launchTimer(duration)
+        wakeLock.acquire(duration * 1000L)
     }
 
     fun stopCounter() {
@@ -82,6 +89,7 @@ class WakeService : Service() {
         stopWake()
         stopSelf()
         removeTimer()
+        wakeLock.release()
     }
 
     private fun startNotification(timestamp: Long) {
