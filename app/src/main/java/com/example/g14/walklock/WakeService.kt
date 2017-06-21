@@ -6,10 +6,14 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Binder
 import android.os.IBinder
 import android.util.Log
+import java.util.*
 
 const val NOTIF_ID = 5637 // notification id for foreground service
 
@@ -22,6 +26,11 @@ class WakeService : Service() {
 
     private lateinit var notificationManager: NotificationManager
     private lateinit var sensorManager: SensorManager
+
+    val listener = object : SensorEventListener {
+        override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
+        override fun onSensorChanged(p0: SensorEvent?) {}
+    }
 
 
     override fun onCreate() {
@@ -60,27 +69,52 @@ class WakeService : Service() {
             return
         }
 
+        startNotification(Date().time + (duration * 1000))
+        startWake()
+    }
+
+    fun stopCounter() {
+        stopNotification()
+        stopWake()
+        stopSelf()
+    }
+
+    private fun startNotification(timestamp: Long) {
         val notifIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(this, /*req code:*/ 0, notifIntent, /*flags:*/ 0)
 
-        val notification: Notification = with (Notification.Builder(this)) {
-            setContentTitle("sensors are being used")
+        val notification: Notification = with(Notification.Builder(this)) {
+            setContentText("sensors are being used")
+            setContentTitle("WORKING!")
+            setSmallIcon(R.mipmap.nogi)
+
             setContentIntent(pendingIntent)
 
+            setUsesChronometer(false)
+//            setChronometerCountDown(true)  // requires API 24 and 'setUsesChronometer(true)'
+            setWhen(timestamp)
         }.build()
 
         Log.i(tag, "starting foreground")
         startForeground(NOTIF_ID, notification)
-
-//        TODO("start handler")
     }
 
-    fun stopCounter() {
+    private fun stopNotification() {
         val removeStatusBar = true
         Log.i(tag, "stopping foreground")
         stopForeground(removeStatusBar)
+    }
 
-//        TODO("stop handler")
+    private fun startWake() {
+        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+
+        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    private fun stopWake() {
+        sensorManager.unregisterListener(listener)
     }
 
     /**
