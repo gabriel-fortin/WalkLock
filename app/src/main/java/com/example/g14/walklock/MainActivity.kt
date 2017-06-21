@@ -22,6 +22,8 @@ class MainActivity : AppCompatActivity() {
 
         startButton.setOnClickListener(this::start)
         stopButton.setOnClickListener(this::stop)
+        plusFiveButton.setOnClickListener { editMinutes(5) }
+        minusFiveButton.setOnClickListener { editMinutes(-5) }
     }
 
     fun start(v: View) {
@@ -44,6 +46,14 @@ class MainActivity : AppCompatActivity() {
         }
 
         startService(serviceIntent)
+    }
+
+    fun editMinutes(diff: Int) {
+        val minutes: Int = Integer.parseInt(minutesEditText.text.toString())
+        val newValue = Integer.toString(minutes + diff)
+        with (minutesEditText.text) {
+            replace(0, this.length, newValue)
+        }
     }
 }
 
