@@ -11,6 +11,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import java.util.*
@@ -85,13 +86,17 @@ class WakeService : Service() {
 
         val notification: Notification = with(Notification.Builder(this)) {
             setContentText("sensors are being used")
-            setContentTitle("WORKING!")
+            setContentTitle("WORKING! (or… walking?)")
             setSmallIcon(R.mipmap.nogi)
 
             setContentIntent(pendingIntent)
 
-            setUsesChronometer(false)
-//            setChronometerCountDown(true)  // requires API 24 and 'setUsesChronometer(true)'
+            if (Build.VERSION.SDK_INT >= 24) {
+                setUsesChronometer(true)
+                setChronometerCountDown(true)  // requires API 24
+            } else {
+                setUsesChronometer(false)
+            }
             setWhen(timestamp)
         }.build()
 
