@@ -11,9 +11,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.Binder
-import android.os.Build
-import android.os.IBinder
+import android.os.*
 import android.util.Log
 import java.util.*
 
@@ -33,6 +31,9 @@ class WakeService : Service() {
         override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
         override fun onSensorChanged(p0: SensorEvent?) {}
     }
+
+    val handler = Handler(Looper.getMainLooper())
+    val stopAction = Runnable { stopCounter() }
 
 
     override fun onCreate() {
@@ -73,12 +74,14 @@ class WakeService : Service() {
 
         startNotification(Date().time + (duration * 1000))
         startWake()
+        launchTimer(duration)
     }
 
     fun stopCounter() {
         stopNotification()
         stopWake()
         stopSelf()
+        removeTimer()
     }
 
     private fun startNotification(timestamp: Long) {
@@ -123,6 +126,14 @@ class WakeService : Service() {
 
     private fun stopWake() {
         sensorManager.unregisterListener(listener)
+    }
+
+    private fun launchTimer(timeInSeconds: Int) {
+        handler.postDelayed(stopAction, timeInSeconds * 1000L)
+    }
+
+    private fun removeTimer() {
+        handler.removeCallbacks(stopAction)
     }
 
     /**
