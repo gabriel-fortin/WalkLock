@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -87,7 +88,9 @@ class WakeService : Service() {
         val notification: Notification = with(Notification.Builder(this)) {
             setContentText("sensors are being used")
             setContentTitle("WORKING! (or… walking?)")
-            setSmallIcon(R.mipmap.nogi)
+            setSmallIcon(R.drawable.nogi)
+            setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.nogi))
+//            setLargeIcon(resources.getDrawable(R.drawable.nogi, null).)
 
             setContentIntent(pendingIntent)
 
