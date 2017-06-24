@@ -25,13 +25,8 @@ class WakeService : Service() {
     private val binder = LocalBinder()
 
     private lateinit var notificationManager: NotificationManager
-    private lateinit var sensorManager: SensorManager
+    private lateinit var keepingSensorsBusy: KeepingSensorsBusy
     private lateinit var powerManager: PowerManager
-
-    val listener = object : SensorEventListener {
-        override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
-        override fun onSensorChanged(p0: SensorEvent?) {}
-    }
 
     val handler = Handler(Looper.getMainLooper())
     val stopCounterAction = Runnable { stopCounter() }
@@ -41,7 +36,7 @@ class WakeService : Service() {
 
     override fun onCreate() {
         notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        keepingSensorsBusy = KeepingSensorsBusy()
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
 
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wake lock TAG")
@@ -80,7 +75,7 @@ class WakeService : Service() {
         }
 
         startNotification(Date().time + (duration * 1000))
-        startWake()
+        keepingSensorsBusy.start()
         removeTimer()
         launchTimer(duration)
         wakeLock.acquire(duration * 1000L)
@@ -88,7 +83,7 @@ class WakeService : Service() {
 
     fun stopCounter() {
         stopNotification()
-        stopWake()
+        keepingSensorsBusy.stop()
         stopSelf()
         removeTimer()
         wakeLock.release()
@@ -126,16 +121,25 @@ class WakeService : Service() {
         stopForeground(removeStatusBar)
     }
 
-    private fun startWake() {
-        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
+    inner class KeepingSensorsBusy {
+        private val sensorManager: SensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        private val listener = object : SensorEventListener {
+            override fun onAccuracyChanged(p0: Sensor?, p1: Int) {}
+            override fun onSensorChanged(p0: SensorEvent?) {}
+        }
 
-        sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
-        sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
-    }
+        fun start() {
+            val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+            val gyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
 
-    private fun stopWake() {
-        sensorManager.unregisterListener(listener)
+            sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_NORMAL)
+            sensorManager.registerListener(listener, gyroscope, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+
+        fun stop() {
+            sensorManager.unregisterListener(listener)
+        }
+
     }
 
     private fun launchTimer(timeInSeconds: Int) {
