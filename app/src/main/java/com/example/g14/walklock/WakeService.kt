@@ -28,8 +28,8 @@ class WakeService : Service() {
     private lateinit var keepingSensorsBusy: KeepingSensorsBusy
     private lateinit var powerManager: PowerManager
 
-    val handler = Handler(Looper.getMainLooper())
-    val stopCounterAction = Runnable { stopCounter() }
+    private val timer: Timer = Timer()
+
 
     lateinit var wakeLock: PowerManager.WakeLock
 
@@ -76,8 +76,7 @@ class WakeService : Service() {
 
         foregroundNotification.start(Date().time + (duration * 1000))
         keepingSensorsBusy.start()
-        removeTimer()
-        launchTimer(duration)
+        timer.after(duration, this::stopCounter)
         wakeLock.acquire(duration * 1000L)
     }
 
@@ -85,7 +84,7 @@ class WakeService : Service() {
         foregroundNotification.stop()
         keepingSensorsBusy.stop()
         stopSelf()
-        removeTimer()
+        timer.cancelCurrentShedule()
         wakeLock.release()
     }
 
@@ -144,12 +143,20 @@ class WakeService : Service() {
         }
     }
 
-    private fun launchTimer(timeInSeconds: Int) {
-        handler.postDelayed(stopCounterAction, timeInSeconds * 1000L)
-    }
+    inner class Timer {
+        lateinit var action: () -> Unit
+        val postableAction = Runnable { action() }
+        val handler = Handler(Looper.getMainLooper())
 
-    private fun removeTimer() {
-        handler.removeCallbacks(stopCounterAction)
+        fun after(seconds: Int, performAction: () -> Unit) {
+            cancelCurrentShedule()
+            action = performAction
+            handler.postDelayed(postableAction, seconds * 1000L)
+        }
+
+        fun cancelCurrentShedule() {
+            handler.removeCallbacks(postableAction)
+        }
     }
 
     /**
