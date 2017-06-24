@@ -34,7 +34,7 @@ class WakeService : Service() {
     }
 
     val handler = Handler(Looper.getMainLooper())
-    val stopAction = Runnable { stopCounter() }
+    val stopCounterAction = Runnable { stopCounter() }
 
     lateinit var wakeLock: PowerManager.WakeLock
 
@@ -45,6 +45,7 @@ class WakeService : Service() {
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
 
         wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wake lock TAG")
+                .apply { setReferenceCounted(false) }
 
         super.onCreate()
     }
@@ -80,6 +81,7 @@ class WakeService : Service() {
 
         startNotification(Date().time + (duration * 1000))
         startWake()
+        removeTimer()
         launchTimer(duration)
         wakeLock.acquire(duration * 1000L)
     }
@@ -137,11 +139,11 @@ class WakeService : Service() {
     }
 
     private fun launchTimer(timeInSeconds: Int) {
-        handler.postDelayed(stopAction, timeInSeconds * 1000L)
+        handler.postDelayed(stopCounterAction, timeInSeconds * 1000L)
     }
 
     private fun removeTimer() {
-        handler.removeCallbacks(stopAction)
+        handler.removeCallbacks(stopCounterAction)
     }
 
     /**
