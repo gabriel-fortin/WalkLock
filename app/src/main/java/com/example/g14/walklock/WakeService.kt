@@ -24,7 +24,7 @@ class WakeService : Service() {
     // RemoteService for a more complete example.
     private val binder = LocalBinder()
 
-    private lateinit var notificationManager: NotificationManager
+    private lateinit var foregroundNotification: ForegroundNotification
     private lateinit var keepingSensorsBusy: KeepingSensorsBusy
     private lateinit var powerManager: PowerManager
 
@@ -35,7 +35,7 @@ class WakeService : Service() {
 
 
     override fun onCreate() {
-        notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        foregroundNotification = ForegroundNotification()
         keepingSensorsBusy = KeepingSensorsBusy()
         powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
 
@@ -74,7 +74,7 @@ class WakeService : Service() {
             return
         }
 
-        startNotification(Date().time + (duration * 1000))
+        foregroundNotification.start(Date().time + (duration * 1000))
         keepingSensorsBusy.start()
         removeTimer()
         launchTimer(duration)
@@ -82,43 +82,46 @@ class WakeService : Service() {
     }
 
     fun stopCounter() {
-        stopNotification()
+        foregroundNotification.stop()
         keepingSensorsBusy.stop()
         stopSelf()
         removeTimer()
         wakeLock.release()
     }
 
-    private fun startNotification(timestamp: Long) {
-        val notifIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(this, /*req code:*/ 0, notifIntent, /*flags:*/ 0)
+    inner class ForegroundNotification {
+        fun start(timestamp: Long) {
+            val notifIntent = Intent(this@WakeService, MainActivity::class.java)
+            val pendingIntent = PendingIntent
+                    .getActivity(this@WakeService, /*req code:*/ 0, notifIntent, /*flags:*/ 0)
 
-        val notification: Notification = with(Notification.Builder(this)) {
-            setContentText("sensors are being used")
-            setContentTitle("WORKING! (or… walking?)")
-            setSmallIcon(R.drawable.nogi)
-            setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.nogi))
+            val notification: Notification = with(Notification.Builder(this@WakeService)) {
+                setContentText("sensors are being used")
+                setContentTitle("WORKING! (or… walking?)")
+                setSmallIcon(R.drawable.nogi)
+                setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.nogi))
 //            setLargeIcon(resources.getDrawable(R.drawable.nogi, null).)
 
-            setContentIntent(pendingIntent)
+                setContentIntent(pendingIntent)
 
-            if (Build.VERSION.SDK_INT >= 24) {
-                setUsesChronometer(true)
-                setChronometerCountDown(true)  // requires API 24
-            } else {
-                setUsesChronometer(false)
-            }
-            setWhen(timestamp)
-        }.build()
+                if (Build.VERSION.SDK_INT >= 24) {
+                    setUsesChronometer(true)
+                    setChronometerCountDown(true)  // requires API 24
+                } else {
+                    setUsesChronometer(false)
+                }
+                setWhen(timestamp)
+            }.build()
 
-        Log.i(tag, "starting foreground")
-        startForeground(NOTIF_ID, notification)
-    }
+            Log.i(tag, "starting foreground")
+            this@WakeService.startForeground(NOTIF_ID, notification)
+        }
 
-    private fun stopNotification() {
-        val removeStatusBar = true
-        Log.i(tag, "stopping foreground")
-        stopForeground(removeStatusBar)
+        fun stop() {
+            val removeStatusBar = true
+            Log.i(tag, "stopping foreground")
+            this@WakeService.stopForeground(removeStatusBar)
+        }
     }
 
     inner class KeepingSensorsBusy {
@@ -139,7 +142,6 @@ class WakeService : Service() {
         fun stop() {
             sensorManager.unregisterListener(listener)
         }
-
     }
 
     private fun launchTimer(timeInSeconds: Int) {
